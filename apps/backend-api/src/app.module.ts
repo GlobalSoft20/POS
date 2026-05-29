@@ -15,6 +15,8 @@ import { PrintersModule } from './modules/printers/printers.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { OrdersGateway } from './gateways/orders.gateway';
 
+import { SuperAdminModule } from './modules/super-admin/super-admin.module';
+
 @Module({
   imports: [
     PrismaModule,
@@ -31,6 +33,7 @@ import { OrdersGateway } from './gateways/orders.gateway';
     ReportsModule,
     PrintersModule,
     SettingsModule,
+    SuperAdminModule,
   ],
   providers: [OrdersGateway],
 })

@@ -8,6 +8,7 @@ datasource db {
 }
 
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
   MANAGER
   CASHIER
@@ -53,6 +54,140 @@ enum PrinterType {
   RECEIPT
 }
 
+enum BusinessStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum SubscriptionPlan {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  TRIAL
+}
+
+// ─── SUPER ADMIN ────────────────────────────────────────────────────────────
+
+model SuperAdmin {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  alerts    SystemAlert[]
+}
+
+model Business {
+  id           String         @id @default(cuid())
+  name         String
+  email        String         @unique
+  phone        String?
+  address      String?
+  country      String         @default("Rwanda")
+  tin          String?
+  logo         String?
+  status       BusinessStatus @default(PENDING)
+  isVerified   Boolean        @default(false)
+  ownerId      String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  owner        User           @relation(fields: [ownerId], references: [id])
+  subscription Subscription?
+  loginLogs    LoginLog[]
+  platformRevenue PlatformRevenue[]
+}
+
+model Subscription {
+  id         String             @id @default(cuid())
+  businessId String             @unique
+  plan       SubscriptionPlan   @default(FREE)
+  status     SubscriptionStatus @default(TRIAL)
+  startDate  DateTime           @default(now())
+  endDate    DateTime?
+  amount     Float              @default(0)
+  currency   String             @default("RWF")
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  business   Business           @relation(fields: [businessId], references: [id])
+  payments   SubscriptionPayment[]
+}
+
+model SubscriptionPayment {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  amount         Float
+  method         String
+  reference      String?
+  paidAt         DateTime @default(now())
+
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+}
+
+model LoginLog {
+  id         String   @id @default(cuid())
+  userId     String
+  businessId String?
+  ipAddress  String?
+  userAgent  String?
+  action     String   @default("LOGIN")
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+  business   Business? @relation(fields: [businessId], references: [id])
+}
+
+model PlatformRevenue {
+  id         String   @id @default(cuid())
+  businessId String
+  amount     Float
+  type       String
+  month      Int
+  year       Int
+  createdAt  DateTime @default(now())
+
+  business   Business @relation(fields: [businessId], references: [id])
+}
+
+model SystemAlert {
+  id          String   @id @default(cuid())
+  superAdminId String
+  type        String
+  title       String
+  message     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  superAdmin  SuperAdmin @relation(fields: [superAdminId], references: [id])
+}
+
+model PlatformSettings {
+  id                String  @id @default(cuid())
+  maintenanceMode   Boolean @default(false)
+  allowRegistration Boolean @default(true)
+  trialDays         Int     @default(14)
+  starterPrice      Float   @default(29000)
+  professionalPrice Float   @default(79000)
+  enterprisePrice   Float   @default(199000)
+  supportEmail      String  @default("support@shms.rw")
+  updatedAt         DateTime @updatedAt
+}
+
+// ─── EXISTING MODELS ────────────────────────────────────────────────────────
+
 model User {
   id           String        @id @default(cuid())
   name         String
@@ -61,10 +196,14 @@ model User {
   pin          String?
   role         UserRole      @default(CASHIER)
   isActive     Boolean       @default(true)
+  businessId   String?
+  lastLoginAt  DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   orders       Order[]
   activityLogs ActivityLog[]
+  loginLogs    LoginLog[]
+  businesses   Business[]
 }
 
 model Category {
