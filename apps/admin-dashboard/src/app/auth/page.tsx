@@ -1,28 +1,36 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import toast from 'react-hot-toast';
 
 export default function AuthPage() {
-  const [email, setEmail] = useState('admin@shms.rw');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuthStore();
+  const { login, token, role, _hasHydrated } = useAuthStore();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!_hasHydrated) return;
+    if (token && role === 'SUPER_ADMIN') router.replace('/super-admin');
+    else if (token) router.replace('/pos');
+  }, [_hasHydrated, token, role, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
-      router.push('/pos');
+      const r = await login(email, password);
+      router.replace(r === 'SUPER_ADMIN' ? '/super-admin' : '/pos');
     } catch {
       toast.error('Invalid credentials');
     } finally {
       setLoading(false);
     }
   };
+
+  if (!_hasHydrated || token) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface">
@@ -35,7 +43,7 @@ export default function AuthPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-sm text-gray-400 mb-1 block">Email</label>
-            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
           </div>
           <div>
             <label className="text-sm text-gray-400 mb-1 block">Password</label>

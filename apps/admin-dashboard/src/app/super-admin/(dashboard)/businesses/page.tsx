@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import saApi from '@/lib/sa-api';
-import { CheckCircle, XCircle, PauseCircle, PlayCircle, ShieldCheck, Eye, Search } from 'lucide-react';
+import { CheckCircle, XCircle, PauseCircle, PlayCircle, ShieldCheck, Eye, Search, Lock, Unlock, LogOut, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -18,7 +18,7 @@ export default function BusinessesPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState('');
   const [search, setSearch] = useState('');
-  const [reasonModal, setReasonModal] = useState<{ id: string; action: 'reject' | 'suspend' } | null>(null);
+  const [modal, setModal] = useState<{ id: string; action: string; label: string } | null>(null);
   const [reason, setReason] = useState('');
 
   const { data: businesses = [], isLoading } = useQuery({
@@ -26,37 +26,34 @@ export default function BusinessesPage() {
     queryFn: () => saApi.get(`/super-admin/businesses${filter ? `?status=${filter}` : ''}`),
   });
 
-  const approve = useMutation({
-    mutationFn: (id: string) => saApi.put(`/super-admin/businesses/${id}/approve`, {}),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['sa-businesses'] }); qc.invalidateQueries({ queryKey: ['sa-dashboard'] }); toast.success('Business approved!'); },
+  const mutate = (action: string, id: string, body: any = {}) =>
+    saApi.put(`/super-admin/businesses/${id}/${action}`, body);
+
+  const doMutation = useMutation({
+    mutationFn: ({ id, action, body }: any) => mutate(action, id, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sa-businesses'] });
+      qc.invalidateQueries({ queryKey: ['sa-dashboard'] });
+      setModal(null); setReason('');
+      toast.success('Done!');
+    },
+    onError: () => toast.error('Action failed'),
   });
 
-  const activate = useMutation({
-    mutationFn: (id: string) => saApi.put(`/super-admin/businesses/${id}/activate`, {}),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['sa-businesses'] }); toast.success('Business activated!'); },
-  });
-
-  const verify = useMutation({
-    mutationFn: (id: string) => saApi.put(`/super-admin/businesses/${id}/verify`, {}),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['sa-businesses'] }); toast.success('Business verified!'); },
-  });
-
-  const doAction = useMutation({
-    mutationFn: ({ id, action, reason }: any) => saApi.put(`/super-admin/businesses/${id}/${action}`, { reason }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['sa-businesses'] }); qc.invalidateQueries({ queryKey: ['sa-dashboard'] }); setReasonModal(null); setReason(''); toast.success('Done!'); },
-  });
+  const quickAction = (id: string, action: string) => doMutation.mutate({ id, action, body: {} });
 
   const filtered = (businesses as any[]).filter((b: any) =>
     !search || b.name.toLowerCase().includes(search.toLowerCase()) || b.email.toLowerCase().includes(search.toLowerCase())
   );
 
+  const needsReason = (action: string) => ['reject', 'suspend'].includes(action);
+  const needsMessage = (action: string) => action === 'request-info';
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">Business Accounts</h1>
-        <div className="flex items-center gap-2 text-sm text-gray-400">
-          Total: <span className="text-white font-medium">{(businesses as any[]).length}</span>
-        </div>
+        <span className="text-sm text-gray-400">Total: <span className="text-white font-medium">{(businesses as any[]).length}</span></span>
       </div>
 
       <div className="flex gap-3 flex-wrap">
@@ -73,11 +70,11 @@ export default function BusinessesPage() {
       </div>
 
       <div className="space-y-3">
-        {isLoading && <p className="text-gray-400">Loading...</p>}
+        {isLoading && <p className="text-gray-400 text-center py-8">Loading...</p>}
         {filtered.map((b: any) => (
           <div key={b.id} className="bg-[#1A1A2E] border border-purple-500/20 rounded-xl p-4">
             <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-bold text-white">{b.name}</p>
@@ -99,36 +96,47 @@ export default function BusinessesPage() {
                 <div>
                   <p className="text-xs text-gray-400">Registered</p>
                   <p className="text-sm text-white">{new Date(b.createdAt).toLocaleDateString()}</p>
-                  <span className={cn('badge px-2 py-0.5 text-xs mt-1 inline-block', statusColors[b.status])}>{b.status}</span>
+                  <span className={cn('text-xs px-2 py-0.5 rounded-full mt-1 inline-block', statusColors[b.status])}>{b.status}</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-1.5 shrink-0">
+
+              <div className="flex flex-col gap-1 shrink-0 min-w-[90px]">
                 <Link href={`/super-admin/businesses/${b.id}`} className="flex items-center gap-1 text-xs bg-[#0F0F1A] hover:bg-purple-500/20 text-gray-400 hover:text-purple-400 px-2 py-1.5 rounded-lg transition-colors border border-purple-500/10">
-                  <Eye size={12} /> View
+                  <Eye size={11} /> View
                 </Link>
-                {b.status === 'PENDING' && (
-                  <button onClick={() => approve.mutate(b.id)} className="flex items-center gap-1 text-xs bg-green-500/20 hover:bg-green-500/30 text-green-400 px-2 py-1.5 rounded-lg transition-colors">
-                    <CheckCircle size={12} /> Approve
+                {b.status === 'PENDING' && <>
+                  <button onClick={() => quickAction(b.id, 'approve')} className="flex items-center gap-1 text-xs bg-green-500/20 hover:bg-green-500/30 text-green-400 px-2 py-1.5 rounded-lg">
+                    <CheckCircle size={11} /> Approve
                   </button>
-                )}
-                {b.status === 'PENDING' && (
-                  <button onClick={() => setReasonModal({ id: b.id, action: 'reject' })} className="flex items-center gap-1 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-2 py-1.5 rounded-lg transition-colors">
-                    <XCircle size={12} /> Reject
+                  <button onClick={() => setModal({ id: b.id, action: 'reject', label: 'Reject' })} className="flex items-center gap-1 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-2 py-1.5 rounded-lg">
+                    <XCircle size={11} /> Reject
                   </button>
-                )}
-                {b.status === 'ACTIVE' && (
-                  <button onClick={() => setReasonModal({ id: b.id, action: 'suspend' })} className="flex items-center gap-1 text-xs bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 px-2 py-1.5 rounded-lg transition-colors">
-                    <PauseCircle size={12} /> Suspend
+                  <button onClick={() => setModal({ id: b.id, action: 'request-info', label: 'Request Info' })} className="flex items-center gap-1 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-2 py-1.5 rounded-lg">
+                    <MessageSquare size={11} /> Info
                   </button>
-                )}
-                {b.status === 'SUSPENDED' && (
-                  <button onClick={() => activate.mutate(b.id)} className="flex items-center gap-1 text-xs bg-green-500/20 hover:bg-green-500/30 text-green-400 px-2 py-1.5 rounded-lg transition-colors">
-                    <PlayCircle size={12} /> Activate
+                </>}
+                {b.status === 'ACTIVE' && <>
+                  <button onClick={() => setModal({ id: b.id, action: 'suspend', label: 'Suspend' })} className="flex items-center gap-1 text-xs bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 px-2 py-1.5 rounded-lg">
+                    <PauseCircle size={11} /> Suspend
                   </button>
-                )}
-                {!b.isVerified && b.status === 'ACTIVE' && (
-                  <button onClick={() => verify.mutate(b.id)} className="flex items-center gap-1 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-2 py-1.5 rounded-lg transition-colors">
-                    <ShieldCheck size={12} /> Verify
+                  <button onClick={() => quickAction(b.id, 'lock')} className="flex items-center gap-1 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-2 py-1.5 rounded-lg">
+                    <Lock size={11} /> Lock
+                  </button>
+                  <button onClick={() => quickAction(b.id, 'force-logout-all')} className="flex items-center gap-1 text-xs bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 px-2 py-1.5 rounded-lg">
+                    <LogOut size={11} /> Logout All
+                  </button>
+                </>}
+                {b.status === 'SUSPENDED' && <>
+                  <button onClick={() => quickAction(b.id, 'activate')} className="flex items-center gap-1 text-xs bg-green-500/20 hover:bg-green-500/30 text-green-400 px-2 py-1.5 rounded-lg">
+                    <PlayCircle size={11} /> Activate
+                  </button>
+                  <button onClick={() => quickAction(b.id, 'unlock')} className="flex items-center gap-1 text-xs bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 px-2 py-1.5 rounded-lg">
+                    <Unlock size={11} /> Unlock
+                  </button>
+                </>}
+                {!b.isVerified && b.status !== 'REJECTED' && (
+                  <button onClick={() => quickAction(b.id, 'verify')} className="flex items-center gap-1 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-2 py-1.5 rounded-lg">
+                    <ShieldCheck size={11} /> Verify
                   </button>
                 )}
               </div>
@@ -138,15 +146,19 @@ export default function BusinessesPage() {
         {filtered.length === 0 && !isLoading && <p className="text-gray-500 text-center py-12">No businesses found</p>}
       </div>
 
-      {reasonModal && (
+      {modal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-[#1A1A2E] border border-purple-500/20 rounded-xl p-6 w-full max-w-sm">
-            <h2 className="font-bold text-white mb-3 capitalize">{reasonModal.action} Business</h2>
-            <textarea className="input mb-4" rows={3} placeholder="Reason (required)" value={reason} onChange={(e) => setReason(e.target.value)} />
+            <h2 className="font-bold text-white mb-3">{modal.label}</h2>
+            <textarea className="input mb-4 w-full" rows={3}
+              placeholder={needsMessage(modal.action) ? 'Message to business...' : 'Reason (required)'}
+              value={reason} onChange={(e) => setReason(e.target.value)} />
             <div className="flex gap-2">
-              <button onClick={() => setReasonModal(null)} className="flex-1 py-2 rounded-lg border border-purple-500/20 text-gray-400 hover:text-white text-sm">Cancel</button>
-              <button onClick={() => doAction.mutate({ id: reasonModal.id, action: reasonModal.action, reason })} disabled={!reason || doAction.isPending}
-                className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors disabled:opacity-50">
+              <button onClick={() => { setModal(null); setReason(''); }} className="flex-1 py-2 rounded-lg border border-purple-500/20 text-gray-400 text-sm">Cancel</button>
+              <button
+                onClick={() => doMutation.mutate({ id: modal.id, action: modal.action, body: needsMessage(modal.action) ? { message: reason } : { reason } })}
+                disabled={!reason || doMutation.isPending}
+                className="flex-1 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium disabled:opacity-50">
                 Confirm
               </button>
             </div>

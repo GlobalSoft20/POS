@@ -20,7 +20,8 @@ export default function SAUsersPage() {
   const [tab, setTab] = useState<'all' | 'online'>('all');
 
   const { data: users = [] } = useQuery({ queryKey: ['sa-users'], queryFn: () => saApi.get('/super-admin/users') });
-  const { data: online = [] } = useQuery({ queryKey: ['sa-online'], queryFn: () => saApi.get('/super-admin/users/online'), refetchInterval: 15000 });
+  const { data: onlineData } = useQuery({ queryKey: ['sa-online'], queryFn: () => saApi.get('/super-admin/users/online'), refetchInterval: 15000 });
+  const onlineUsers: any[] = (onlineData as any)?.users || [];
 
   const forceLogout = useMutation({
     mutationFn: (id: string) => saApi.put(`/super-admin/users/${id}/force-logout`, {}),
@@ -32,7 +33,7 @@ export default function SAUsersPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['sa-users'] }); toast.success('User status updated!'); },
   });
 
-  const displayUsers = (tab === 'online' ? online : users) as any[];
+  const displayUsers = (tab === 'online' ? onlineUsers : users) as any[];
   const filtered = displayUsers.filter((u: any) =>
     !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase())
   );
@@ -44,7 +45,7 @@ export default function SAUsersPage() {
         <div className="flex items-center gap-2 text-sm">
           <span className="text-gray-400">Total: <span className="text-white font-medium">{(users as any[]).length}</span></span>
           <span className="text-gray-600">|</span>
-          <span className="flex items-center gap-1 text-green-400"><Wifi size={12} /> {(online as any[]).length} online</span>
+          <span className="flex items-center gap-1 text-green-400"><Wifi size={12} /> {onlineUsers.length} online</span>
         </div>
       </div>
 
@@ -56,7 +57,7 @@ export default function SAUsersPage() {
         <div className="flex bg-[#1A1A2E] border border-purple-500/20 rounded-lg p-1">
           {(['all', 'online'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} className={cn('px-3 py-1.5 rounded-md text-sm font-medium transition-colors capitalize', tab === t ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white')}>
-              {t === 'online' ? `🟢 Online (${(online as any[]).length})` : `All (${(users as any[]).length})`}
+              {t === 'online' ? `🟢 Online (${onlineUsers.length})` : `All (${(users as any[]).length})`}
             </button>
           ))}
         </div>
@@ -76,7 +77,7 @@ export default function SAUsersPage() {
           </thead>
           <tbody className="divide-y divide-purple-500/10">
             {filtered.map((u: any) => {
-              const isOnline = (online as any[]).some((o: any) => o.id === u.id);
+              const isOnline = onlineUsers.some((o: any) => o.id === u.id);
               return (
                 <tr key={u.id} className="hover:bg-purple-500/5 transition-colors">
                   <td className="p-4">

@@ -1,9 +1,10 @@
 'use client';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Building2, Users, CreditCard, TrendingUp, Activity, Settings, LogOut, Shield, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useSuperAdminStore } from '@/store/super-admin.store';
+import { useAuthStore } from '@/store/auth.store';
 import { useQuery } from '@tanstack/react-query';
 import saApi from '@/lib/sa-api';
 
@@ -20,18 +21,29 @@ const nav = [
 export default function SALayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { superAdmin, logout } = useSuperAdminStore();
+  const { user: superAdmin, token, role, _hasHydrated, logout } = useAuthStore();
 
-  const { data: stats } = useQuery({ queryKey: ['sa-dashboard'], queryFn: () => saApi.get('/super-admin/dashboard'), retry: false });
+  useEffect(() => {
+    if (!_hasHydrated) return;
+    if (!token || role !== 'SUPER_ADMIN') router.replace('/auth');
+  }, [_hasHydrated, token, role, router]);
+
+  const { data: stats } = useQuery({
+    queryKey: ['sa-dashboard'],
+    queryFn: () => saApi.get('/super-admin/dashboard'),
+    retry: false,
+    enabled: !!token && role === 'SUPER_ADMIN',
+    refetchInterval: 30000,
+  });
   const s = stats as any;
 
-  const handleLogout = () => { logout(); router.push('/super-admin/auth'); };
+  const handleLogout = () => { logout(); router.replace('/auth'); };
 
-  if (pathname === '/super-admin/auth') return <>{children}</>;
+  if (!_hasHydrated) return null;
+  if (!token || role !== 'SUPER_ADMIN') return null;
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0F0F1A]">
-      {/* Sidebar */}
       <aside className="w-16 lg:w-60 bg-[#1A1A2E] border-r border-purple-500/20 flex flex-col">
         <div className="p-4 border-b border-purple-500/20">
           <div className="flex items-center gap-3">
@@ -47,8 +59,7 @@ export default function SALayout({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
           {nav.map(({ href, label, icon: Icon, exact }) => {
-            const active = exact ? pathname === href : pathname.startsWith(href) && href !== '/super-admin';
-            const isActive = exact ? pathname === href : active;
+            const isActive = exact ? pathname === href : pathname.startsWith(href);
             return (
               <Link key={href} href={href} className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm',
@@ -69,9 +80,7 @@ export default function SALayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
         <header className="h-14 bg-[#1A1A2E] border-b border-purple-500/20 flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
             {s && (

@@ -8,7 +8,7 @@ export class AuthController {
 
   @Post('login')
   login(@Body() body: { email: string; password: string }) {
-    return this.auth.login(body.email, body.password);
+    return this.auth.unifiedLogin(body.email, body.password);
   }
 
   @Post('pin-login')
