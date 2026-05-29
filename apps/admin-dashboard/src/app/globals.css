@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { --background: 30 30 46; }
+  body { @apply bg-[#1E1E2E] text-white; }
+  * { @apply border-[#3A3A5C]; }
+}
+
+@layer components {
+  .card { @apply bg-[#2A2A3E] rounded-xl border border-[#3A3A5C] p-4; }
+  .btn-primary { @apply bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-medium transition-colors; }
+  .btn-ghost { @apply hover:bg-white/10 text-white px-4 py-2 rounded-lg font-medium transition-colors; }
+  .input { @apply bg-[#1E1E2E] border border-[#3A3A5C] rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 w-full; }
+  .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
+}

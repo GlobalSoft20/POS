@@ -1,0 +1,16 @@
+{
+  "name": "shms-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:dashboard\"",
+    "dev:api": "npm run dev --workspace=apps/backend-api",
+    "dev:dashboard": "npm run dev --workspace=apps/admin-dashboard",
+    "build": "npm run build --workspaces",
+    "install:all": "npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
