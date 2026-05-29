@@ -15,12 +15,12 @@ export default function POSPage() {
   const qc = useQueryClient();
   const { items, addItem, removeItem, updateQty, tableId, setTable, discount, setDiscount, clear, subtotal, total } = usePOSStore();
 
-  const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: () => api.get('/categories') });
+  const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: () => api.get('/categories', 'categories') });
   const { data: products = [] } = useQuery({
     queryKey: ['products', activeCat, search],
-    queryFn: () => api.get(`/products?${activeCat ? `categoryId=${activeCat}&` : ''}${search ? `search=${search}` : ''}`),
+    queryFn: () => api.get(`/products?${activeCat ? `categoryId=${activeCat}&` : ''}${search ? `search=${search}` : ''}`, 'products'),
   });
-  const { data: tables = [] } = useQuery({ queryKey: ['tables'], queryFn: () => api.get('/tables') });
+  const { data: tables = [] } = useQuery({ queryKey: ['tables'], queryFn: () => api.get('/tables', 'tables') });
 
   const createOrder = useMutation({
     mutationFn: (data: any) => api.post('/orders', data),

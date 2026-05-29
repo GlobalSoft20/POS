@@ -4,13 +4,20 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:android": "NEXT_PUBLIC_API_URL=http://10.0.2.2:4000/api NEXT_PUBLIC_WS_URL=http://10.0.2.2:4000 next build",
+    "export": "next build",
+    "android": "npm run build:android && npx cap sync android && npx cap open android",
     "start": "next start"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
     "@tanstack/react-query": "^5.17.0",
     "axios": "^1.6.5",
     "clsx": "^2.1.0",
     "date-fns": "^3.2.0",
+    "idb": "^8.0.3",
     "lucide-react": "^0.309.0",
     "next": "14.1.0",
     "react": "^18.2.0",
