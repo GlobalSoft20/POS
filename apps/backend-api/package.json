@@ -2,12 +2,12 @@
   "name": "backend-api",
   "version": "1.0.0",
   "scripts": {
-    "dev": "ts-node-dev --respawn src/main.ts",
+    "dev": "npx ts-node-dev --respawn src/main.ts",
     "build": "tsc",
     "start": "node dist/main.js",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
-    "db:seed": "node_modules/.bin/ts-node-dev --transpile-only prisma/seed.ts"
+    "db:seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
